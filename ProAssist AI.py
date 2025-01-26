@@ -1,22 +1,4 @@
-'''**Key Components**
-- **State Management**: Using TypedDict to define and manage the state of each customer interaction.
-- **Query Categorization**: Classifying customer queries into Technical, Billing, or General categories.
-- **Sentiment Analysis**: Determining the emotional tone of customer queries.
-- **Response Generation**: Creating appropriate responses based on the query category and sentiment.
-- **Escalation Mechanism**: Automatically escalating queries with negative sentiment to human agents.
-- **Workflow Graph**: Utilizing LangGraph to create a flexible and extensible workflow.
-
-# **Method Details**
-1. **Initialization**: Set up the environment and import necessary libraries.
-2. **State Definition**: Create a structure to hold query information, category, sentiment, and response.
-3. **Node Functions**: Implement separate functions for categorization, sentiment analysis, and response generation.
-4. **Graph Construction**: Use StateGraph to define the workflow, adding nodes and edges to represent the support process.
-5. **Conditional Routing**: Implement logic to route queries based on their category and sentiment.
-6. **Workflow Compilation**: Compile the graph into an executable application.
-7. **Execution**: Process customer queries through the workflow and retrieve results.
-'''
-
-from typing import TypedDict, Dict # type: ignore
+from typing import TypedDict, Dict 
 from langgraph.graph import StateGraph, END
 from langchain_core.prompts import ChatPromptTemplate
 from IPython.display import display
@@ -30,12 +12,11 @@ class State(TypedDict):
 
 llm = ChatGroq(
     temperature=0,
-    groq_api_key="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",
+    groq_api_key="Give the api key from Groq Playground",
     model_name="llama-3.3-70b-versatile"
 )
 
 def categorize(state: State) -> State:
-    """Categorize the query."""
     prompt = ChatPromptTemplate.from_template(
         "Categorize the following customer query into one of these categories: "
         "Technical, Billing, General. Query: {query}"
@@ -45,7 +26,6 @@ def categorize(state: State) -> State:
     return {"category": category}
 
 def analyze_sentiment(state: State) -> State:
-    """Analyze sentiment of the query."""
     prompt = ChatPromptTemplate.from_template(
         "Analyze the sentiment of the following customer query "
         "Response with either 'Positive', 'Neutral', or 'Negative'. Query: {query}"
