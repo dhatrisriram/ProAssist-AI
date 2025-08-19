@@ -52,7 +52,6 @@ After setting your Groq API key in a `.env` file (`GROQ_API_KEY=your_key_here`),
 
 ## Example Interaction
 
-![Wifi not working](https://drive.google.com/file/d/1pdvHMLUX57HuIVgalh0ZDK3oB_uZqZGU/view?usp=sharing)
-![Escalation](https://drive.google.com/file/d/1SltccJHWwpNqnTcNUwafqswTD_sJAYLv/view?usp=sharing)
-![Shipping]
-(https://drive.google.com/file/d/12458dx4lacXmN99v1U7917E0Y53l-4cb/view?usp=sharing) 
+![Wifi not working](https://drive.google.com/file/d/1pdvHMLUX57HuIVgalh0ZDK3oB_uZqZGU)
+![Escalation](https://drive.google.com/file/d/1SltccJHWwpNqnTcNUwafqswTD_sJAYLv)
+![Shipping](https://drive.google.com/file/d/12458dx4lacXmN99v1U7917E0Y53l-4cb) 
