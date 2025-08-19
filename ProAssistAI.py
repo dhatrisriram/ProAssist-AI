@@ -119,8 +119,7 @@ def needs_escalation(state: State) -> bool:
     if any(word in query for word in EMERGENCY_KEYWORDS):
         return True
     neg_count = sum(1 for _, msg in state["history"] if "negative" in msg.lower() or "escalate" in msg.lower())
-    return neg_count > 1  # Example: escalate for repeated negatives
-    # You can further refine rules here
+    return neg_count > 1  
 
 def route_query(state: State) -> str:
     if needs_escalation(state):
@@ -212,8 +211,8 @@ def gradio_interface(query: str):
     )
 
 gui = gr.Interface(
-    fn=gradio_interface, # Use your existing interface function that calls run_customer_support
-    theme="soft",# Your original theme
+    fn=gradio_interface, 
+    theme="soft",
     inputs=gr.Textbox(lines=2, placeholder="Enter your query here..."),
     outputs=gr.Markdown(),
     title="Customer Support Assistant",
