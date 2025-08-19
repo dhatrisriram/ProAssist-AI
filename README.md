@@ -52,6 +52,10 @@ After setting your Groq API key in a `.env` file (`GROQ_API_KEY=your_key_here`),
 
 ## Example Interaction
 
-![Wifi not working](https://i.postimg.cc/DwzHWhQR/wifi.png)
-![Escalation](https://i.postimg.cc/NFYPQvfJ/escalation.png)
-![Shipping](https://i.postimg.cc/RhMGj1X2/shipping.png) 
+- ![Wifi not working](https://i.postimg.cc/DwzHWhQR/wifi.png)
+
+
+- ![Escalation](https://i.postimg.cc/NFYPQvfJ/escalation.png)
+
+
+- ![Shipping](https://i.postimg.cc/RhMGj1X2/shipping.png) 
