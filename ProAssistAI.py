@@ -7,11 +7,14 @@ from dotenv import load_dotenv
 import os
 import re
 
+
 load_dotenv()
 groq_api_key = os.getenv("GROQ_API_KEY")
 
+
 # Emergency or escalation keywords
 EMERGENCY_KEYWORDS = ["urgent", "lawsuit", "threat", "sue", "asap", "human", "fraud", "angry", "escalate"]
+
 
 class State(TypedDict):
     query: str
@@ -21,14 +24,17 @@ class State(TypedDict):
     response: str
     history: List[Tuple[str, str]]
 
+
 llm = ChatGroq(
     temperature=0,
     groq_api_key=groq_api_key,
     model_name="llama-3.3-70b-versatile"
 )
 
+
 def _history_to_text(history: List[Tuple[str, str]]) -> str:
     return "\n".join([f"{who}: {msg}" for who, msg in history])
+
 
 def categorize(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
@@ -44,6 +50,7 @@ def categorize(state: State) -> State:
     }).content.strip()).title()
     return {**state, "category": category}
 
+
 def analyze_sentiment(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
         "Rate the customer sentiment in the following query from -1 (very negative) to 1 (very positive), and provide a brief reason for your score.\n"
@@ -57,13 +64,15 @@ def analyze_sentiment(state: State) -> State:
     reason = match.group(2).strip() if match else "N/A"
     return {**state, "sentiment_score": score, "sentiment_reason": reason}
 
+
 def handle_technical(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
-        "With this chat context:\n{history}\n Provide a technical support response to the following query: {query}" 
+        "With this chat context:\n{history}\n Provide a technical support response to the following query: {query}"
     )
     chain = prompt | llm
     response = chain.invoke({"query": state["query"], "history": _history_to_text(state['history'])}).content
     return {**state, "response": response, "history": state["history"] + [("assistant", response)]}
+
 
 def handle_billing(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
@@ -73,6 +82,7 @@ def handle_billing(state: State) -> State:
     response = chain.invoke({"query": state["query"], "history": _history_to_text(state['history'])}).content
     return {**state, "response": response, "history": state["history"] + [("assistant", response)]}
 
+
 def handle_shipping(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
         "With this chat context:\n{history}\nProvide a general support response to the following query: {query}"
@@ -80,6 +90,7 @@ def handle_shipping(state: State) -> State:
     chain = prompt | llm
     response = chain.invoke({"query": state["query"], "history": _history_to_text(state['history'])}).content
     return {**state, "response": response, "history": state["history"] + [("assistant", response)]}
+
 
 def handle_returns(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
@@ -89,6 +100,7 @@ def handle_returns(state: State) -> State:
     response = chain.invoke({"query": state["query"], "history": _history_to_text(state['history'])}).content
     return {**state, "response": response, "history": state["history"] + [("assistant", response)]}
 
+
 def handle_product_inquiry(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
         "With this chat context:\n{history}\nProvide a concise product inquiry support answer to: {query}"
@@ -96,6 +108,7 @@ def handle_product_inquiry(state: State) -> State:
     chain = prompt | llm
     response = chain.invoke({"query": state["query"], "history": _history_to_text(state['history'])}).content
     return {**state, "response": response, "history": state["history"] + [("assistant", response)]}
+
 
 def handle_general(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
@@ -105,12 +118,14 @@ def handle_general(state: State) -> State:
     response = chain.invoke({"query": state["query"], "history": _history_to_text(state['history'])}).content
     return {**state, "response": response, "history": state["history"] + [("assistant", response)]}
 
+
 def escalate(state: State) -> State:
     response = (
         "Your query has been escalated to a human agent due to urgency, strong negative sentiment, repeated issues or a direct request for escalation. "
         "A team member will reach out shortly."
     )
     return {**state, "response": response, "history": state["history"] + [("assistant", response)]}
+
 
 def needs_escalation(state: State) -> bool:
     query = state["query"].lower()
@@ -119,7 +134,8 @@ def needs_escalation(state: State) -> bool:
     if any(word in query for word in EMERGENCY_KEYWORDS):
         return True
     neg_count = sum(1 for _, msg in state["history"] if "negative" in msg.lower() or "escalate" in msg.lower())
-    return neg_count > 1  
+    return neg_count > 1
+
 
 def route_query(state: State) -> str:
     if needs_escalation(state):
@@ -135,6 +151,7 @@ def route_query(state: State) -> str:
     }
     return mapping.get(category, "handle_general")
 
+
 # --- Workflow Setup
 workflow = StateGraph(State)
 workflow.add_node("categorize", categorize)
@@ -146,6 +163,7 @@ workflow.add_node("handle_returns", handle_returns)
 workflow.add_node("handle_product_inquiry", handle_product_inquiry)
 workflow.add_node("handle_general", handle_general)
 workflow.add_node("escalate", escalate)
+
 
 workflow.add_edge("categorize", "analyze_sentiment")
 workflow.add_conditional_edges(
@@ -167,7 +185,9 @@ for final in [
 workflow.set_entry_point("categorize")
 app = workflow.compile()
 
+
 # --- Gradio Chat Interface & Input Validation
+
 
 def validate_input(message, history):
     if not message.strip():
@@ -176,6 +196,7 @@ def validate_input(message, history):
         return False, "Your input is too long (max 800 characters)."
     return True, ""
 
+
 def run_customer_support(query, history):
     start_state = {
         "query": query,
@@ -183,42 +204,56 @@ def run_customer_support(query, history):
         "sentiment_score": 0.0,
         "sentiment_reason": "",
         "response": "",
-        "history": list(history)  # maintain session convo as list of (role, message)
+        "history": list(history)  # history is already list of (role, msg)
     }
     results = app.invoke(start_state)
     return results['response'], results["category"], results["sentiment_score"], results["sentiment_reason"]
 
-def chat_fn(message, history):
-    valid, msg = validate_input(message, history)
+
+def chat_fn(user_message, chat_history=None):
+    chat_history = chat_history or []
+
+    # Normalize chat_history: convert tuples → dicts
+    normalized_history = []
+    for m in chat_history:
+        if isinstance(m, tuple) and len(m) == 2:
+            # tuple → dict
+            normalized_history.append({"role": "user", "content": m[0]})
+            normalized_history.append({"role": "assistant", "content": m[1]})
+        elif isinstance(m, dict):
+            normalized_history.append(m)
+
+    # Validate input
+    valid, msg = validate_input(user_message, normalized_history)
     if not valid:
-        history.append(("system", msg))
-        return "", history
-    response, category, sentiment_score, sentiment_reason = run_customer_support(message, history)
-    # Append user and AI messages to history
-    history.append(("user", message))
-    # AI response includes metadata:
-    meta = f"**Category:** {category}\n**Sentiment score:** {sentiment_score:.2f} ({sentiment_reason})"
-    bot_reply = f"{response}\n\n{meta}"
-    history.append(("assistant", bot_reply))
-    return "", history
+        normalized_history.append({"role": "assistant", "content": msg})
+        return normalized_history
 
-def gradio_interface(query: str):
-    response, category, sentiment_score, sentiment_reason = run_customer_support(query, [])
-    return (
-        f"**Category:** {category}\n\n"
-        f"**Sentiment score:** {sentiment_score:.2f} ({sentiment_reason})\n\n"
-        f"**Response:** {response}"
-    )
+    # Convert history back into (role, msg) tuples for LangGraph
+    lg_history = [(m["role"], m["content"]) for m in normalized_history if m["role"] in ["user", "assistant"]]
 
-gui = gr.Interface(
-    fn=gradio_interface, 
+    # Run workflow
+    response, category, sentiment_score, sentiment_reason = run_customer_support(user_message, lg_history)
+
+    # Add metadata
+    meta = f"<p style='font-size:14px'><b>Category:</b> {category}<br><b>Sentiment score:</b> {sentiment_score:.2f} ({sentiment_reason})</p>"
+    full_response = f"{response}\n\n{meta}"
+
+    # Update history
+    normalized_history.append({"role": "user", "content": user_message})
+    normalized_history.append({"role": "assistant", "content": full_response})
+
+    return normalized_history
+
+
+
+# Use Gradio's ChatInterface for interactive conversation with history tracking
+gui = gr.ChatInterface(
+    fn=chat_fn,
     theme="soft",
-    inputs=gr.Textbox(lines=2, placeholder="Enter your query here..."),
-    outputs=gr.Markdown(),
     title="Customer Support Assistant",
-    description="Provide a query and receive a categorized response. The system analyzes sentiment and routes to the appropriate support channel.",
-    allow_flagging="never" 
-    )
-# Launch the app
+    description="Provide a query and receive a categorized response. The system analyzes sentiment and routes to appropriate support channels.",
+)
+
 if __name__ == "__main__":
     gui.launch()
