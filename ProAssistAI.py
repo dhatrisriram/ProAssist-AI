@@ -6,8 +6,9 @@ import gradio as gr
 from dotenv import load_dotenv
 import os
 import re
+import json
 
-
+from intent_agent import intent_clarifier_node, detect_ambiguity, generate_clarifying_question, route_after_clarifier, merge_context
 load_dotenv()
 groq_api_key = os.getenv("GROQ_API_KEY")
 
@@ -23,6 +24,10 @@ class State(TypedDict):
     sentiment_reason: str
     response: str
     history: List[Tuple[str, str]]
+
+    # --- P4: Intent Clarifier Fields ---
+    is_ambiguous: bool
+    clarifying_question: str
 
 
 llm = ChatGroq(
@@ -151,9 +156,9 @@ def route_query(state: State) -> str:
     }
     return mapping.get(category, "handle_general")
 
-
 # --- Workflow Setup
 workflow = StateGraph(State)
+workflow.add_node("intent_clarifier", intent_clarifier_node)
 workflow.add_node("categorize", categorize)
 workflow.add_node("analyze_sentiment", analyze_sentiment)
 workflow.add_node("handle_technical", handle_technical)
@@ -163,9 +168,17 @@ workflow.add_node("handle_returns", handle_returns)
 workflow.add_node("handle_product_inquiry", handle_product_inquiry)
 workflow.add_node("handle_general", handle_general)
 workflow.add_node("escalate", escalate)
-
+workflow.set_entry_point("intent_clarifier")
 
 workflow.add_edge("categorize", "analyze_sentiment")
+workflow.add_conditional_edges(
+    "intent_clarifier",
+    route_after_clarifier,
+    {
+        "END": END,
+        "categorize": "categorize"
+    }
+)
 workflow.add_conditional_edges(
     "analyze_sentiment",
     route_query, {
@@ -182,7 +195,6 @@ for final in [
     "handle_technical", "handle_billing", "handle_shipping",
     "handle_returns", "handle_product_inquiry", "handle_general", "escalate"]:
     workflow.add_edge(final, END)
-workflow.set_entry_point("categorize")
 app = workflow.compile()
 
 
@@ -204,7 +216,9 @@ def run_customer_support(query, history):
         "sentiment_score": 0.0,
         "sentiment_reason": "",
         "response": "",
-        "history": list(history)  # history is already list of (role, msg)
+        "history": list(history),
+        "is_ambiguous": False,          
+        "clarifying_question": ""
     }
     results = app.invoke(start_state)
     return results['response'], results["category"], results["sentiment_score"], results["sentiment_reason"]
